@@ -1,76 +1,75 @@
 const express = require("express");
 const router = express.Router();
-const data = require("../data");
-const path = require("path");
+const dbSingleton = require("../dbSingleton");
+
+const db = dbSingleton.getConnection();
+
 
 router.get("/", (req, res) => {
-  res.json({ users: data.products });
+  const query = "SELECT * FROM products";
+  db.query(query, (err, results) => {
+    if (err) {
+      res.status(500).send(err);
+      return;
+    }
+    res.json(results);
+  });
 });
 
-router.get('/:id',(req,res)=>{
-  const {id} = req.params;
-  const product = data.products.find((product)=> product.id === parseInt(id))
-  if(product)
-  {
-    res.json(product);
-  }
-else{
-  res.status(404).json({ message: `User with ID: ${id} not found` });
-}
-})
+router.get("/:id", (req, res) => {
+  const { id } = req.params;
+  console.log(id);
+  const query = "SELECT * FROM products WHERE id = ?";
 
-router.post('/',(req,res)=>{
-  const productsData = req.body
-  console.log(productsData)
-  const findOne = data.products.find((product) => product.id === productsData.id);
-
-  if (productsData.price < 0 )
-  {
-    res.status(404).send("the price most by bigger to zero")
-  }
-  if (productsData.amont < 0)
-  {
-    res.status(404).send("the amont most by postive")
-  }
-    if (
-      findOne ||
-      productsData.name === undefined ||
-      productsData.price === undefined
-    ) {
-      res.status(400).send("cant add this products");
-    } else {
-      data.products.push(productsData);
-      res.json({ message: `User added`, users: data.products });
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      res.status(500).send(err);
+      return;
     }
-})
+    console.log(results);
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Article not found" });
+    }
+    res.json(results[0]);
+  });
+});
 
-router.put("/:id",(req,res)=>{
-   const { id } = req.params;
-   const productData = req.body;
-  
-   const productsInd = data.users.findIndex((item) => item.id === parseInt(id));
+router.post("/", (req, res) => {
+  const { name, price } = req.body;
 
-   if (productsInd !== -1) 
-   {
-    data.products[productsInd] = productData;
-    res.json({ message: `User with ID: ${id} deleted`, products: data.products });
-   }
-   else{
-    res.status(404).send("cant find the id")
-   }
-})
+  const query = "INSERT INTO products (name, price) VALUES (?,?)";
 
-router.delete('/',(req,res)=>{
-   const { id } = req.params;
-   const productsInd = data.users.findIndex((item) => item.id === parseInt(id));
+  db.query(query, [name, price], (err, result) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).send(err);
+    }
+    res.json({ message: "products added!", name: result.name });
+  });
+});
 
-   if(productsInd !== -1){
-    data.products.splice(productsInd ,1)
-    res.json({ message: `User with ID: ${id} deleted`, products: data.products });
-   }
-   else{
-    res.status(404).json({ message: `User not found` });
-   }
-})
+router.put("/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, price } = req.body;
+  const query = "UPDATE products SET name =? , price=?  WHERE id=?";
+  db.query(query, [name, price, id], (err, results) => {
+    if (err) {
+      res.status(500).send(err);
+      return;
+    }
+    res.json({ message: "products updated!" });
+  });
+});
 
+router.delete("/:id", (req, res) => {
+  const { id } = req.params;
+  const query = "DELETE FROM products WHERE id =?";
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      res.status(500).send(err);
+      return;
+    }
+    res.json({ message: "products deleted!" });
+  });
+});
 module.exports = router;
